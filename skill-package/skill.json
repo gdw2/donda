@@ -10,8 +10,8 @@
     "apis": {
       "custom": {
         "endpoint": {
-          "uri": "https://easily-wallpapers-cannon-dial.trycloudflare.com",
-          "sslCertificateType": "Wildcard"
+          "uri": "https://donda.gdw2.com",
+          "sslCertificateType": "Trusted"
         }
       }
     }
