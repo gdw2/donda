@@ -11,7 +11,7 @@
       "custom": {
         "endpoint": {
           "uri": "https://donda.gdw2.com",
-          "sslCertificateType": "Trusted"
+          "sslCertificateType": "Wildcard"
         }
       }
     }
