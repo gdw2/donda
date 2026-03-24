@@ -1,0 +1,12 @@
+{
+  "name": "alexa-skill-donda",
+  "version": "1.0.0",
+  "description": "Alexa skill for Donda - custom LLM endpoint",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2"
+  }
+}

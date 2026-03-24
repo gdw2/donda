@@ -1,0 +1,33 @@
+{
+  "manifest": {
+    "publishingInformation": {
+      "locales": {
+        "en-US": {
+          "name": "Donda"
+        }
+      }
+    },
+    "apis": {
+      "custom": {
+        "endpoint": {
+          "uri": "https://stylish-beijing-independent-makers.trycloudflare.com",
+          "sslCertificateType": "Wildcard"
+        },
+        "regions": {
+          "EU": {
+            "endpoint": {
+              "uri": "https://stylish-beijing-independent-makers.trycloudflare.com",
+              "sslCertificateType": "Trusted"
+            }
+          },
+          "NA": {
+            "endpoint": {
+              "uri": "https://stylish-beijing-independent-makers.trycloudflare.com",
+              "sslCertificateType": "Trusted"
+            }
+          }
+        }
+      }
+    }
+  }
+}

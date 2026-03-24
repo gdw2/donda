@@ -1,0 +1,14 @@
+{
+  "profiles": {
+    "default": {
+      "skillMetadata": {
+        "src": "./skill-package"
+      },
+      "model": {
+        "en-US": {
+          "src": "./skill-package"
+        }
+      }
+    }
+  }
+}

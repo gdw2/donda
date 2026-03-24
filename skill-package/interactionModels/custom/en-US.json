@@ -1,0 +1,38 @@
+{
+  "languageModel": {
+    "invocationName": "dawn duh",
+    "intents": [
+      {
+        "name": "ChatIntent",
+        "slots": [
+          {
+            "name": "userText",
+            "type": "AMAZON.SearchQuery"
+          }
+        ],
+        "samples": [
+          "say {userText}",
+          "tell me {userText}"
+        ]
+      },
+      {
+        "name": "AMAZON.HelpIntent",
+        "samples": [
+          "help"
+        ]
+      },
+      {
+        "name": "AMAZON.StopIntent",
+        "samples": [
+          "stop"
+        ]
+      },
+      {
+        "name": "AMAZON.CancelIntent",
+        "samples": [
+          "cancel"
+        ]
+      }
+    ]
+  }
+}

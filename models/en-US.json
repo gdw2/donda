@@ -1,0 +1,31 @@
+{
+  "languageModel": {
+    "invocationName": "donda",
+    "intents": [
+      {
+        "name": "ChatIntent",
+        "slots": [
+          {
+            "name": "userText",
+            "type": "AMAZON.LITERAL"
+          }
+        ],
+        "samples": [
+          "{userText}"
+        ]
+      },
+      {
+        "name": "AMAZON.HelpIntent",
+        "samples": []
+      },
+      {
+        "name": "AMAZON.StopIntent",
+        "samples": []
+      },
+      {
+        "name": "AMAZON.CancelIntent",
+        "samples": []
+      }
+    ]
+  }
+}
