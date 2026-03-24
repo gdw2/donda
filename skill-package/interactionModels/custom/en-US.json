@@ -11,8 +11,10 @@
           }
         ],
         "samples": [
+          "to {userText}",
           "say {userText}",
-          "tell me {userText}"
+          "tell me {userText}",
+          "ask {userText}"
         ]
       },
       {
