@@ -3,3 +3,4 @@ node_modules/
 *.log
 devbox.json
 devbox.lock
+result
