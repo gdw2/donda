@@ -130,7 +130,7 @@
                   PrivateTmp = true;
                   ProtectSystem = "strict";
                   ProtectHome = true;
-                  ReadWritePaths = [ "/var/lib/alexa-skill-donda" ];
+                  StateDirectory = "alexa-skill-donda";
                 };
               };
 
