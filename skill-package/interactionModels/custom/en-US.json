@@ -1,6 +1,6 @@
 {
   "languageModel": {
-    "invocationName": "dawn duh",
+    "invocationName": "ding dong",
     "intents": [
       {
         "name": "ChatIntent",
@@ -11,10 +11,16 @@
           }
         ],
         "samples": [
-          "to {userText}",
-          "say {userText}",
-          "tell me {userText}",
-          "ask {userText}"
+          "what's for lunch",
+          "what's for lunch today",
+          "what's for school lunch",
+          "what's for school lunch today",
+          "what's for lunch tomorrow",
+          "what's for lunch on {userText}",
+          "lunch menu",
+          "school lunch menu",
+          "ask {userText}",
+          "tell me {userText}"
         ]
       },
       {

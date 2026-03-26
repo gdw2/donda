@@ -75,8 +75,20 @@
 
               skillAppId = mkOption {
                 type = types.str;
-                default = "amzn1.ask.skill.17d7aad1-666b-4607-9c7d-3d4113668484";
+                default = "amzn1.ask.skill.4af90b07-5af7-4d90-aba1-3018762d2114";
                 description = "Alexa Skill Application ID";
+              };
+
+              siliconflowApiKey = mkOption {
+                type = types.str;
+                default = "";
+                description = "Siliconflow API key for LLM calls";
+              };
+
+              environmentFile = mkOption {
+                type = types.nullOr types.path;
+                default = null;
+                description = "Path to environment file containing secrets (e.g., SILICONFLOW_API_KEY)";
               };
 
               user = mkOption {
@@ -120,10 +132,13 @@
                   Restart = "on-failure";
                   RestartSec = 5;
                   
-                  Environment = [
-                    "PORT=${toString cfg.port}"
-                    "SKILL_APP_ID=${cfg.skillAppId}"
-                  ];
+Environment = [
+                      "PORT=${toString cfg.port}"
+                      "SKILL_APP_ID=${cfg.skillAppId}"
+                      "SILICONFLOW_API_KEY=${cfg.siliconflowApiKey}"
+                    ];
+
+                  EnvironmentFile = lib.mkIf (cfg.environmentFile != null) cfg.environmentFile;
 
                   # Security hardening
                   NoNewPrivileges = true;
