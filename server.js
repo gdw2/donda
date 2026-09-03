@@ -1,18 +1,10 @@
 const express = require('express');
-const OpenAI = require('openai');
 const app = express();
 const PORT = process.env.PORT || 8080;
 
 const SKILL_APP_ID = process.env.SKILL_APP_ID || 'amzn1.ask.skill.4af90b07-5af7-4d90-aba1-3018762d2114';
-const SILICONFLOW_API_KEY = process.env.SILICONFLOW_API_KEY;
-const LLM_MODEL = 'Qwen/Qwen2.5-7B-Instruct';
 
 const LUNCH_API_URL = 'https://api.linqconnect.com/api/FamilyMenu?buildingId=85af1af6-c2ab-ed11-8e6a-8a240c066ba8&districtId=a83d5cd9-a7a8-ed11-8e69-da0395d724bd';
-
-const openai = SILICONFLOW_API_KEY ? new OpenAI({
-  apiKey: SILICONFLOW_API_KEY,
-  baseURL: 'https://api.siliconflow.com/v1'
-}) : null;
 
 app.use(express.json());
 
@@ -87,26 +79,23 @@ app.all('/', (req, res) => {
 
 async function handleChatIntent(userText, res) {
   try {
-    if (!openai) {
-      return res.json(buildResponse('Sorry, I\'m not configured with an API key. Please set the Siliconflow API key.'));
-    }
-
     const dateInfo = parseDateReference(userText);
     console.log('Parsed date info:', dateInfo);
 
     const menuData = await fetchLunchMenu(dateInfo.startDate, dateInfo.endDate);
-    
+
     if (!menuData || !menuData.FamilyMenuSessions || menuData.FamilyMenuSessions.length === 0) {
       return res.json(buildResponse('Sorry, I couldn\'t find any lunch menu information right now.'));
     }
 
     const menuContext = buildMenuContext(menuData, dateInfo.targetDate);
-    
+
     if (!menuContext) {
       return res.json(buildResponse(`I don't have lunch menu information for ${dateInfo.description}.`));
     }
 
-    const response = await callLLM(userText, menuContext);
+    const response = formatMenuSpeech(menuContext, dateInfo.description);
+    console.log('Formatted response:', response);
     return res.json(buildResponse(response));
 
   } catch (error) {
@@ -221,33 +210,36 @@ function buildMenuContext(menuData, targetDate) {
   return null;
 }
 
-async function callLLM(userQuestion, menuContext) {
-  const systemPrompt = `You are a helpful assistant for a school lunch menu. Answer questions about school lunch in a friendly, conversational way. Keep responses brief and natural for voice output (under 100 words). Don't use special characters or formatting - just speak naturally.
+function formatMenuSpeech(menuContext, description) {
+  if (!menuContext.items.length) {
+    return `I don't have lunch menu information for ${description}.`;
+  }
 
-When given lunch menu data, summarize the main options clearly. Group similar items and skip minor sides unless asked.`;
+  const byCategory = {};
+  for (const item of menuContext.items) {
+    if (!byCategory[item.category]) {
+      byCategory[item.category] = [];
+    }
+    if (!byCategory[item.category].includes(item.name)) {
+      byCategory[item.category].push(item.name);
+    }
+  }
 
-  const menuText = menuContext.items.length > 0
-    ? menuContext.items.map(i => `${i.category}: ${i.name}`).join(', ')
-    : 'No menu items found';
+  const parts = [];
+  for (const [category, items] of Object.entries(byCategory)) {
+    if (items.length === 0) continue;
+    parts.push(`${category}: ${joinItems(items)}.`);
+  }
 
-  const userPrompt = `The user asked: "${userQuestion}"
+  const intro = description === 'today' ? "Here's today's school lunch." : `Here's the school lunch for ${description}.`;
+  return `${intro} ${parts.join(' ')}`;
+}
 
-Here's the lunch menu for ${menuContext.date}:
-${menuText}
-
-Please answer their question naturally.`;
-
-  const completion = await openai.chat.completions.create({
-    model: LLM_MODEL,
-    messages: [
-      { role: 'system', content: systemPrompt },
-      { role: 'user', content: userPrompt }
-    ],
-    max_tokens: 200,
-    temperature: 0.7
-  });
-
-  return completion.choices[0].message.content.trim();
+function joinItems(items) {
+  if (items.length === 1) return items[0];
+  const copy = [...items];
+  const last = copy.pop();
+  return `${copy.join(', ')}, and ${last}`;
 }
 
 function buildResponse(outputText, shouldEndSession = true) {
@@ -263,9 +255,24 @@ function buildResponse(outputText, shouldEndSession = true) {
   };
 }
 
-app.listen(PORT, () => {
-  console.log(`Ding Dong Alexa skill server running on port ${PORT}`);
-  if (!SILICONFLOW_API_KEY) {
-    console.warn('WARNING: SILICONFLOW_API_KEY not set. LLM features will not work.');
-  }
-});
+if (require.main === module) {
+  app.listen(PORT, () => {
+    console.log(`Ding Dong Alexa skill server running on port ${PORT}`);
+  });
+}
+
+module.exports = {
+  app,
+  buildResponse,
+  formatMenuSpeech,
+  joinItems,
+  parseDateReference,
+  getNextDayOfWeek,
+  formatDateForApi,
+  formatDateForMatch,
+  fetchLunchMenu,
+  buildMenuContext,
+  LUNCH_API_URL,
+  SKILL_APP_ID,
+  PORT
+};

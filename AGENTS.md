@@ -1,10 +1,10 @@
 # Alexa Skill "Donda" - Development Notes
 
 ## Overview
-Custom Alexa skill that forwards requests to a local LLM service via Cloudflare Tunnel.
+Custom Alexa skill for looking up the school lunch menu via Cloudflare Tunnel.
 
 ## Architecture
-- **Alexa Skill** → **Cloudflare Tunnel** → **Local Node.js server** → **Local LLM**
+- **Alexa Skill** → **Cloudflare Tunnel** → **Local Node.js server** → **LinqConnect school lunch API**
 
 ## Key Files
 - `skill-package/skill.json` - Skill manifest (endpoint, SSL cert type)
@@ -55,7 +55,7 @@ npx --yes ask-cli@2.30.7 deploy
 npx --yes ask-cli@2.30.7 smapi simulate-skill \
   -s <skill-id> \
   -g development \
-  --input-content "ask dawn duh to tell me a joke" \
+  --input-content "ask ding dong what is for lunch today" \
   --device-locale en-US
 ```
 
@@ -92,7 +92,7 @@ Import the flake in your NixOS configuration:
           services.alexa-skill-donda = {
             enable = true;
             port = 8080;
-            skillAppId = "amzn1.ask.skill.17d7aad1-666b-4607-9c7d-3d4113668484";
+            skillAppId = "amzn1.ask.skill.4af90b07-5af7-4d90-aba1-3018762d2114";
             openFirewall = true;  # Open port in firewall
           };
         }
@@ -113,11 +113,14 @@ Import the flake in your NixOS configuration:
 
 The service includes automatic restarts, security hardening, and runs as an unprivileged user.
 
-## Current State (as of March 2026)
-- Invocation: "dawn duh"
-- Skill ID: amzn1.ask.skill.17d7aad1-666b-4607-9c7d-3d4113668484
-- Endpoint: https://stylish-beijing-independent-makers.trycloudflare.com
-- Note: CLI simulation fails but real device may work
+## Current State
+- Invocation: "ding dong"
+- Skill ID: amzn1.ask.skill.4af90b07-5af7-4d90-aba1-3018762d2114
+- Endpoint: https://donda.gdw2.com (Cloudflare tunnel → localhost:8080)
+- Menu data from: LinqConnect FamilyMenu API (building/district hardcoded in server.js)
+- Response generation: rule-based formatting of menu JSON (no LLM); LLM may be re-added later
 
 ## Testing
-The CLI simulation sometimes fails with "unexpected error" even when the skill is configured correctly. Testing on actual Echo devices or the web-based developer console simulator may work when CLI fails.
+The CLI simulation can be flaky. The utterance "ask ding dong what is for lunch today" may resolve to a different skill on the first attempt; deleting stale skill IDs and retrying usually fixes it. Launch simulation ("open ding dong") is more reliable. Testing on actual Echo devices or the web-based developer console simulator also works.
+
+For local integration tests, run `npm test` (requires the server to be running, or sets up its own instance).

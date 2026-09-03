@@ -17,7 +17,7 @@
           
           src = ./.;
           
-          npmDepsHash = "sha256-uGOb0IIPF0FHnSwpe1nUwZxqkzvdhl5lnCnbl5jecsM=";
+          npmDepsHash = "sha256-leciu00S+00tBIoaIA6FehvZ5H8pPezqOvJyVigL9Tk=";
           
           nativeBuildInputs = [ pkgs.makeWrapper ];
           
@@ -33,7 +33,7 @@
           '';
           
           meta = with pkgs.lib; {
-            description = "Alexa Skill Donda - Custom LLM endpoint for Alexa";
+            description = "Alexa Skill Donda - School lunch menu for Alexa";
             license = licenses.mit;
             platforms = platforms.all;
           };
@@ -79,16 +79,10 @@
                 description = "Alexa Skill Application ID";
               };
 
-              siliconflowApiKey = mkOption {
-                type = types.str;
-                default = "";
-                description = "Siliconflow API key for LLM calls";
-              };
-
               environmentFile = mkOption {
                 type = types.nullOr types.path;
                 default = null;
-                description = "Path to environment file containing secrets (e.g., SILICONFLOW_API_KEY)";
+                description = "Path to environment file containing secrets";
               };
 
               user = mkOption {
@@ -135,7 +129,6 @@
 Environment = [
                       "PORT=${toString cfg.port}"
                       "SKILL_APP_ID=${cfg.skillAppId}"
-                      "SILICONFLOW_API_KEY=${cfg.siliconflowApiKey}"
                     ];
 
                   EnvironmentFile = lib.mkIf (cfg.environmentFile != null) cfg.environmentFile;
