@@ -29,7 +29,7 @@
             mkdir -p $out/lib
             cp -r . $out/lib/alexa-skill-donda
             
-            makeWrapper ${pkgs.nodejs_20}/bin/node $out/bin/alexa-skill-donda \
+            makeWrapper ${pkgs.nodejs_24}/bin/node $out/bin/alexa-skill-donda \
               --add-flags "$out/lib/alexa-skill-donda/server.js" \
               --set NODE_PATH "$out/lib/alexa-skill-donda/node_modules"
           '';
@@ -49,7 +49,7 @@
 
         devShells.default = pkgs.mkShell {
           buildInputs = with pkgs; [
-            nodejs_20
+            nodejs_24
             cloudflared
           ];
           
