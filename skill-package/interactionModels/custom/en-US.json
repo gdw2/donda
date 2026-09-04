@@ -15,7 +15,12 @@
           "run {userText}",
           "ask {userText}",
           "about {userText}",
-          "tell me {userText}"
+          "tell me {userText}",
+          "what's {userText}",
+          "whats {userText}",
+          "what is {userText}",
+          "what are {userText}",
+          "what will {userText}"
         ]
       },
       {

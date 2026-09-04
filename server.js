@@ -7,8 +7,8 @@ const SKILL_APP_ID = process.env.SKILL_APP_ID || 'amzn1.ask.skill.4af90b07-5af7-
 
 const LUNCH_API_URL = 'https://api.linqconnect.com/api/FamilyMenu?buildingId=85af1af6-c2ab-ed11-8e6a-8a240c066ba8&districtId=a83d5cd9-a7a8-ed11-8e69-da0395d724bd';
 
-const HELP_TEXT = 'I can tell you the school lunch menu. Just say something like, tell me what is for lunch today, or ask about tomorrow\'s menu. What would you like to know?';
-const FALLBACK_TEXT = 'Sorry, I didn\'t catch that. Try saying, tell me what is for lunch today. What can I help you with?';
+const HELP_TEXT = 'I can tell you the school lunch menu. Just say something like, tell me what is for lunch today, or tell me what is for lunch tomorrow.';
+const FALLBACK_TEXT = 'Sorry, I didn\'t catch that. Try saying, tell me what is for lunch today.';
 
 let matcherPromise = null;
 let matcherProviderOverride = null;
@@ -70,8 +70,8 @@ app.all('/', (req, res) => {
   if (requestType === 'LaunchRequest') {
     console.log('Handling LaunchRequest');
     const welcome =
-      'Hello, I am Ding Dong. You can ask me about school lunch. For example, say tell me what is for lunch today. What can I help you with?';
-    return res.json(buildResponse(welcome, false));
+      'Hello, I am Ding Dong. You can ask me about school lunch. For example, say tell me what is for lunch today.';
+    return res.json(buildResponse(welcome));
   }
 
   if (requestType === 'IntentRequest') {
@@ -89,7 +89,7 @@ app.all('/', (req, res) => {
     }
 
     if (intentName === 'AMAZON.HelpIntent') {
-      return res.json(buildResponse(HELP_TEXT, false));
+      return res.json(buildResponse(HELP_TEXT));
     }
 
     if (intentName === 'AMAZON.StopIntent' || intentName === 'AMAZON.CancelIntent') {
@@ -123,7 +123,7 @@ async function handleChatIntent(userText, res) {
 
     // Route non-lunch intents (help / exit) that arrive via ChatIntent.
     if (matchedIntent === 'help') {
-      return res.json(buildResponse(HELP_TEXT, false));
+      return res.json(buildResponse(HELP_TEXT));
     }
     if (matchedIntent === 'exit') {
       return res.json(buildResponse('Goodbye!'));
@@ -150,7 +150,7 @@ async function handleChatIntent(userText, res) {
     const isLunchRequest = matcherSaysLunch || !matcher || keywordNamesADay || isDayToken;
 
     if (!isLunchRequest) {
-      return res.json(buildResponse(FALLBACK_TEXT, false));
+      return res.json(buildResponse(FALLBACK_TEXT));
     }
 
     const dateInfo = matcherSaysLunch ? resolveDateInfo(userText, matchedIntent) : keywordInfo;
@@ -159,24 +159,22 @@ async function handleChatIntent(userText, res) {
     const menuData = await fetchLunchMenu(dateInfo.startDate, dateInfo.endDate);
 
     if (!menuData || !menuData.FamilyMenuSessions || menuData.FamilyMenuSessions.length === 0) {
-      return res.json(buildResponse('Sorry, I couldn\'t find any lunch menu information right now.', false));
+      return res.json(buildResponse('Sorry, I couldn\'t find any lunch menu information right now.'));
     }
 
     const menuContext = buildMenuContext(menuData, dateInfo.targetDate);
 
     if (!menuContext) {
-      return res.json(buildResponse(`I don't have lunch menu information for ${dateInfo.description}.`, false));
+      return res.json(buildResponse(`I don't have lunch menu information for ${dateInfo.description}.`));
     }
 
     const response = formatMenuSpeech(menuContext, dateInfo.description);
     console.log('Formatted response:', response);
-    // Keep the session open so the user can ask a follow-up (e.g. "and tomorrow?")
-    // without repeating a carrier phrase.
-    return res.json(buildResponse(response, false));
+    return res.json(buildResponse(response));
 
   } catch (error) {
     console.error('Error in handleChatIntent:', error);
-    return res.json(buildResponse('Sorry, I had trouble looking up the lunch menu. Please try again.', false));
+    return res.json(buildResponse('Sorry, I had trouble looking up the lunch menu. Please try again.'));
   }
 }
 
