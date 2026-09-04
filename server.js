@@ -1,10 +1,39 @@
 const express = require('express');
+const path = require('path');
 const app = express();
 const PORT = process.env.PORT || 8080;
 
 const SKILL_APP_ID = process.env.SKILL_APP_ID || 'amzn1.ask.skill.4af90b07-5af7-4d90-aba1-3018762d2114';
 
 const LUNCH_API_URL = 'https://api.linqconnect.com/api/FamilyMenu?buildingId=85af1af6-c2ab-ed11-8e6a-8a240c066ba8&districtId=a83d5cd9-a7a8-ed11-8e69-da0395d724bd';
+
+const HELP_TEXT = 'I can tell you the school lunch menu. Just say something like, tell me what is for lunch today, or ask about tomorrow\'s menu. What would you like to know?';
+const FALLBACK_TEXT = 'Sorry, I didn\'t catch that. Try saying, tell me what is for lunch today. What can I help you with?';
+
+let matcherPromise = null;
+let matcherProviderOverride = null;
+
+function getIntentMatcher() {
+  if (matcherProviderOverride) {
+    return Promise.resolve(matcherProviderOverride());
+  }
+  if (process.env.DISABLE_INTENT_MATCHER === '1') {
+    return Promise.resolve(null);
+  }
+  if (!matcherPromise) {
+    const { IntentMatcher } = require('./intent/intent-matcher');
+    const { INTENT_DEFINITIONS } = require('./intent/intents');
+    matcherPromise = new IntentMatcher({
+      definitions: INTENT_DEFINITIONS,
+      threshold: 0.75,
+      cacheDir: path.join(__dirname, 'intent', '.cache')
+    }).init().catch((err) => {
+      console.error('IntentMatcher init failed, disabling matcher:', err);
+      return null;
+    });
+  }
+  return matcherPromise;
+}
 
 app.use(express.json());
 
@@ -40,7 +69,9 @@ app.all('/', (req, res) => {
 
   if (requestType === 'LaunchRequest') {
     console.log('Handling LaunchRequest');
-    return res.json(buildResponse('Hello! Ask me about school lunch. Try saying what\'s for lunch today.'));
+    const welcome =
+      'Hello, I am Ding Dong. You can ask me about school lunch. For example, say tell me what is for lunch today. What can I help you with?';
+    return res.json(buildResponse(welcome, false));
   }
 
   if (requestType === 'IntentRequest') {
@@ -58,7 +89,7 @@ app.all('/', (req, res) => {
     }
 
     if (intentName === 'AMAZON.HelpIntent') {
-      return res.json(buildResponse('You can ask me about school lunch. Try saying what\'s for lunch today or what\'s for lunch tomorrow.'));
+      return res.json(buildResponse(HELP_TEXT, false));
     }
 
     if (intentName === 'AMAZON.StopIntent' || intentName === 'AMAZON.CancelIntent') {
@@ -79,29 +110,101 @@ app.all('/', (req, res) => {
 
 async function handleChatIntent(userText, res) {
   try {
-    const dateInfo = parseDateReference(userText);
-    console.log('Parsed date info:', dateInfo);
+    const matcher = await getIntentMatcher();
+
+    let matchedIntent = null;
+    let confidence = 0;
+    if (matcher) {
+      const match = await matcher.match(userText);
+      matchedIntent = match.intent;
+      confidence = match.confidence;
+      console.log(`IntentMatcher: intent=${matchedIntent} confidence=${confidence.toFixed(3)}`);
+    }
+
+    // Route non-lunch intents (help / exit) that arrive via ChatIntent.
+    if (matchedIntent === 'help') {
+      return res.json(buildResponse(HELP_TEXT, false));
+    }
+    if (matchedIntent === 'exit') {
+      return res.json(buildResponse('Goodbye!'));
+    }
+
+    const matcherSaysLunch =
+      matchedIntent === 'get_lunch_today' || matchedIntent === 'get_lunch_tomorrow';
+    const keywordInfo = parseDateReference(userText);
+    const keywordNamesADay = keywordInfo.description !== 'today';
+
+    // With the generic interaction model, ChatIntent's {userText} slot holds the
+    // free-form phrase (e.g. "tell me what is for lunch today" -> the query after
+    // the carrier) or a bare day token; an empty slot may occur for in-session
+    // utterances. Treat empty/day-token as lunch requests resolved by keywords.
+    const trimmed = (userText || '').trim();
+    const isDayToken = trimmed === '' ||
+      /^(today|tomorrow|monday|tuesday|wednesday|thursday|friday|saturday|sunday)$/i.test(trimmed);
+
+    // Determine whether this is a lunch request:
+    // - matcher classified it as lunch, OR
+    // - the text names a specific weekday/tomorrow, OR
+    // - the matcher is disabled/unavailable (keyword parsing only), OR
+    // - the slot holds a bare day token / is empty (free-form in-session speech).
+    const isLunchRequest = matcherSaysLunch || !matcher || keywordNamesADay || isDayToken;
+
+    if (!isLunchRequest) {
+      return res.json(buildResponse(FALLBACK_TEXT, false));
+    }
+
+    const dateInfo = matcherSaysLunch ? resolveDateInfo(userText, matchedIntent) : keywordInfo;
+    console.log('Resolved date info:', dateInfo);
 
     const menuData = await fetchLunchMenu(dateInfo.startDate, dateInfo.endDate);
 
     if (!menuData || !menuData.FamilyMenuSessions || menuData.FamilyMenuSessions.length === 0) {
-      return res.json(buildResponse('Sorry, I couldn\'t find any lunch menu information right now.'));
+      return res.json(buildResponse('Sorry, I couldn\'t find any lunch menu information right now.', false));
     }
 
     const menuContext = buildMenuContext(menuData, dateInfo.targetDate);
 
     if (!menuContext) {
-      return res.json(buildResponse(`I don't have lunch menu information for ${dateInfo.description}.`));
+      return res.json(buildResponse(`I don't have lunch menu information for ${dateInfo.description}.`, false));
     }
 
     const response = formatMenuSpeech(menuContext, dateInfo.description);
     console.log('Formatted response:', response);
-    return res.json(buildResponse(response));
+    // Keep the session open so the user can ask a follow-up (e.g. "and tomorrow?")
+    // without repeating a carrier phrase.
+    return res.json(buildResponse(response, false));
 
   } catch (error) {
     console.error('Error in handleChatIntent:', error);
-    return res.json(buildResponse('Sorry, I had trouble looking up the lunch menu. Please try again.'));
+    return res.json(buildResponse('Sorry, I had trouble looking up the lunch menu. Please try again.', false));
   }
+}
+
+function resolveDateInfo(userText, matchedIntent) {
+  const keywordInfo = parseDateReference(userText);
+
+  // Keyword parsing wins when the user named a specific weekday.
+  if (keywordInfo.description !== 'today') {
+    return keywordInfo;
+  }
+
+  // Otherwise use the matcher's today/tomorrow classification.
+  const base = new Date();
+  base.setHours(0, 0, 0, 0);
+  const targetDate = new Date(base);
+  let description = 'today';
+
+  if (matchedIntent === 'get_lunch_tomorrow' || /(^|\s)tomorrow'?s?/.test(userText.toLowerCase())) {
+    targetDate.setDate(targetDate.getDate() + 1);
+    description = 'tomorrow';
+  }
+
+  const startDate = new Date(targetDate);
+  startDate.setDate(startDate.getDate() - 3);
+  const endDate = new Date(targetDate);
+  endDate.setDate(endDate.getDate() + 3);
+
+  return { targetDate, startDate, endDate, description };
 }
 
 function parseDateReference(text) {
@@ -267,12 +370,20 @@ module.exports = {
   formatMenuSpeech,
   joinItems,
   parseDateReference,
+  resolveDateInfo,
   getNextDayOfWeek,
   formatDateForApi,
   formatDateForMatch,
   fetchLunchMenu,
   buildMenuContext,
+  handleChatIntent,
+  getIntentMatcher,
+  _setMatcherProviderOverride(fn) {
+    matcherProviderOverride = fn;
+  },
   LUNCH_API_URL,
   SKILL_APP_ID,
-  PORT
+  PORT,
+  HELP_TEXT,
+  FALLBACK_TEXT
 };

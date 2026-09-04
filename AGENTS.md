@@ -10,6 +10,9 @@ Custom Alexa skill for looking up the school lunch menu via Cloudflare Tunnel.
 - `skill-package/skill.json` - Skill manifest (endpoint, SSL cert type)
 - `skill-package/interactionModels/custom/en-US.json` - Interaction model (intents, utterances)
 - `server.js` - Express server handling Alexa requests
+- `intent/intent-matcher.js` - Reusable IntentMatcher class (sentence-embedding intent routing)
+- `intent/intents.js` - Intent definitions (key + sample utterances)
+- `intent/example.js` - IntentMatcher demo runner (`npm run intent-demo`)
 - `ask-resources.json` - ASK CLI configuration
 - `flake.nix` - Nix flake for reproducible builds and NixOS deployment
 
@@ -119,8 +122,32 @@ The service includes automatic restarts, security hardening, and runs as an unpr
 - Endpoint: https://donda.gdw2.com (Cloudflare tunnel → localhost:8080)
 - Menu data from: LinqConnect FamilyMenu API (building/district hardcoded in server.js)
 - Response generation: rule-based formatting of menu JSON (no LLM); LLM may be re-added later
+- Alexa interaction model is intentionally domain-agnostic (set once, never edited for new
+  capabilities). It only exposes a single ChatIntent with an AMAZON.SearchQuery slot and
+  generic carrier samples ("do/run/ask/about/tell me {userText}") plus the standard
+  built-in intents. DO NOT add lunch-specific sample utterances to the model.
+- Intent routing: all ChatIntent text is classified server-side by
+  `intent/intent-matcher.js` (sentence embeddings) into
+  get_lunch_today / get_lunch_tomorrow / help / exit. Weekday keywords in the text
+  override matcher date. Set `DISABLE_INTENT_MATCHER=1` to skip embedding routing
+  (used by tests). Reference embeddings cached in `intent/.cache/`.
+- Multi-turn: LaunchRequest ("open ding dong") responds with shouldEndSession=false and
+  invites free-form follow-ups; ChatIntent answers also keep the session open so users
+  can ask follow-ups without repeating a carrier. exit/stop/cancel end the session.
+
+## Alexa Carrier Phrasing
+Because the interaction model only has generic carriers, users invoke the skill in the
+simulator/device via a carrier verb, e.g.:
+- "ask ding dong to tell me what is for lunch today"
+- "ask ding dong to tell me what is for lunch tomorrow"
+Or they open a multi-turn session first:
+- "open ding dong" → then "what's for lunch today" (free speech inside the session)
 
 ## Testing
-The CLI simulation can be flaky. The utterance "ask ding dong what is for lunch today" may resolve to a different skill on the first attempt; deleting stale skill IDs and retrying usually fixes it. Launch simulation ("open ding dong") is more reliable. Testing on actual Echo devices or the web-based developer console simulator also works.
+The CLI simulation can be flaky and, for a domain-agnostic model, the utterance MUST include
+a carrier verb to route: e.g. "ask ding dong to tell me what is for lunch today" (not
+"ask ding dong what is for lunch today"). Launch simulation ("open ding dong") is more
+reliable and enables free-form follow-up testing. Testing on actual Echo devices or the
+web-based developer console simulator also works.
 
 For local integration tests, run `npm test` (requires the server to be running, or sets up its own instance).

@@ -1,10 +1,14 @@
 const { test, before, after, afterEach } = require('node:test');
 const assert = require('node:assert');
+
+process.env.DISABLE_INTENT_MATCHER = '1';
+
 const {
   app,
   formatMenuSpeech,
   joinItems,
   parseDateReference,
+  resolveDateInfo,
   getNextDayOfWeek,
   formatDateForApi,
   formatDateForMatch,
@@ -203,4 +207,29 @@ test('full HTTP flow rejects wrong application ID', async () => {
     body: JSON.stringify(wrong)
   });
   assert.strictEqual(res.status, 400);
+});
+
+test('resolveDateInfo returns today for get_lunch_today', () => {
+  const info = resolveDateInfo('what is for lunch today', 'get_lunch_today');
+  assert.strictEqual(info.description, 'today');
+  assert.strictEqual(formatDateForMatch(info.targetDate), formatDateForMatch(new Date()));
+});
+
+test('resolveDateInfo returns tomorrow for get_lunch_tomorrow even without the word', () => {
+  const info = resolveDateInfo('what are we having for lunch', 'get_lunch_tomorrow');
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  assert.strictEqual(info.description, 'tomorrow');
+  assert.strictEqual(formatDateForMatch(info.targetDate), formatDateForMatch(tomorrow));
+});
+
+test('resolveDateInfo prefers keyword weekday over matcher intent', () => {
+  const info = resolveDateInfo('what is for lunch on friday', 'get_lunch_today');
+  assert.strictEqual(info.description, 'Friday');
+  assert.strictEqual(info.targetDate.getDay(), 5);
+});
+
+test('resolveDateInfo prefers keyword tomorrow over matcher today', () => {
+  const info = resolveDateInfo('what is the lunch menu tomorrow', 'get_lunch_today');
+  assert.strictEqual(info.description, 'tomorrow');
 });

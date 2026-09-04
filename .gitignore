@@ -4,3 +4,4 @@ node_modules/
 devbox.json
 devbox.lock
 result
+intent/.cache/

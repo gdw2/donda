@@ -17,11 +17,13 @@
           
           src = ./.;
           
-          npmDepsHash = "sha256-leciu00S+00tBIoaIA6FehvZ5H8pPezqOvJyVigL9Tk=";
+          npmDepsHash = "sha256-Lpdy/nD8yrTlbFUVVWqMKXsK9PEjkl2W/PejamAxhfM=";
           
           nativeBuildInputs = [ pkgs.makeWrapper ];
           
           dontNpmBuild = true;
+          npmRebuild = false;
+          npmRebuildFlags = [ "--ignore-scripts" ];
           
           installPhase = ''
             mkdir -p $out/lib
